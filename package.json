@@ -1,5 +1,5 @@
 {
-  "name": "nymph",
+  "name": "node-nymph",
   "version": "0.1.0",
   "description": "Nymph provides a data transferring method between TCPSocket and WebSocket, which could connect your different devices like Arduino, cellphone or laptop.",
   "main": "index.js",
