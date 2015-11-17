@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Nymph</title>
+    <meta name="keywords" content="">
+    <meta name="description" content="" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <meta name="Author" contect="Rijn">
+    <meta property="og:title" content="Cracker" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="http://nymph.rijnx.com" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" type="text/css" href="dist/ui.css">
+</head>
+
+<body>
+
+	<div class="panel mainview">
+		<div class="header">
+			Mainview
+		</div>
+        <div class="body" id="three3d">
+        </div>
+	</div>
+
+    <div class="panel data">
+        <div class="header">
+            Data [<span class="data-source">0</span>]
+        </div>
+        <div class="body">
+            <div class="list data-list">
+
+            </div>
+        </div>
+    </div>
+
+	<div class="panel client">
+		<div class="header">
+			Client
+		</div>
+		<div class="body">
+			<div class="list client-list">
+
+			</div>
+		</div>
+	</div>
+
+	<div class="panel device">
+		<div class="header">
+			Device
+		</div>
+		<div class="body">
+			<div class="list device-list">
+
+			</div>
+		</div>
+	</div>
+
+    <div class="panel console">
+	    <div class='header clickable'>
+	        <p class="console-header">Console [<span class="package-count">0</span>] <small>click to clear</small></p>
+		    <div class='status'>
+		    	<p><span class='circle red'></span></p>
+		    </div>
+	    </div>
+	    <div class="body">
+	    </div>
+    </div>
+
+    <input id='console-line' />
+
+    <footer>
+
+        <p>Nymph &copy; if & Rijn, Dexta Robotics, 2015.</p>
+
+    </footer>
+
+    <script src="dist/jquery-2.1.4.min.js"></script>
+    <script src="dist/socket.io.js"></script>
+    <script src="dist/three.min.js"></script>
+    <!-- <script src="dist/Stats.js"></script> -->
+    <!-- <script src="dist/app.js"></script> -->
+    <script type="text/javascript">
+    $(document).ready(function() {
+        $.nymph = {
+        	consoleObject : $('.console .body'),
+        	deviceList : $('.device-list'),
+        	clientList : $('.client-list'),
+            device : [],
+        	consolePrint : function(string, color) {
+        		this.consoleObject.prepend('<p class="' + (color || "") + '"><span class="timestamp">' + Math.round(new Date().getTime()) + '</span><span class="info">' + string + "</span></p>");
+        	},
+            consoleClear : function() {
+                this.consoleObject.html("");
+            },
+
+            packageCount : 0,
+
+        	remoteAddress : "ws://nymph.rijnx.com:27667",
+        	// remoteAddress : "ws://192.168.1.104:27667",
+        	// localAddress : "ws://192.168.1.103:27667",
+
+        	remoteSocket : null,
+        	// localSocket : null,
+
+        	// localConnected : false,
+        	remoteConnected : false,
+
+       //  	connectLocalServer : function() {
+       //  		this.consolePrint("connecting to " + this.localAddress + "...");
+       //  		this.remoteSocket = io.connect(this.localAddress);
+       //  		this.remoteSocket.on('connect', function() {
+			    //     $.nymph.consolePrint($.nymph.localAddress + " connected.");
+			    //     $.nymph.localConnected = true;
+			    //     $.nymph.localEventHandler();
+			    //     // $.nymph.connectRemoteServer();
+			    // });
+       //  		this.remoteSocket.on('connect_error', function(event) {
+			    //     $.nymph.consolePrint("connect " + $.nymph.localAddress + " failed.");
+			    // });
+       //  	},
+        	connectRemoteServer : function() {
+        		this.consolePrint("connecting to " + this.remoteAddress + "...");
+        		this.remoteSocket = io.connect(this.remoteAddress);
+        		this.remoteSocket.on('connect', function() {
+			        $.nymph.consolePrint($.nymph.remoteAddress + " connected.");
+			        $.nymph.remoteConnected = true;
+			        $('.circle').removeClass('red').addClass('green');
+			        $.nymph.remoteSocket.emit(
+			        	'message',
+			        	{
+			        		type : 'serverinfo',
+			        	}
+			        );
+			        $.nymph.remoteEventHandler();
+			    });
+        		this.remoteSocket.on('connect_error', function(event) {
+			        $.nymph.consolePrint("connect " + $.nymph.remoteAddress + " failed.");
+			    });
+        	},
+        	remoteEventHandler : function() {
+        		this.consolePrint('subscribe remote server event handler.');
+        		this.remoteSocket.on('disconnect', function() {
+        			$.nymph.consolePrint($.nymph.remoteAddress + " disconnect.");
+                    $('.circle').removeClass('green').addClass('red');
+        			$.nymph.remoteConnected = false;
+        		});
+        		this.remoteSocket.on('message', function(obj) {
+        			// $.nymph.consolePrint('trigger event.');
+        			switch(obj.type)
+        			{
+        				// case 'newsource':
+        				case 'connect':
+        				case 'disconnect':
+        					$.nymph.consolePrint('[' + obj.type + '] ' + obj.data.type + ' ' + obj.data.address + " : " + obj.data.port);
+        					break;
+        				case 'data':
+        					console.log(obj);
+        					$.nymph.consolePrint('[' + obj.type  + '] ' +  obj.data.source + ' ' + JSON.stringify(obj.data.data));
+                           
+                            // console.log(obj.data.data.DongleID);
+                            if(obj.data.data !== null)
+                            {
+                                $.nymph.addDevices(obj.data.data);
+                                // console.log(obj.data.data.Righthand.Quaternion);
+                                rotateCube([
+                                    obj.data.data.Righthand.Quaternion[1],
+                                    obj.data.data.Righthand.Quaternion[2],
+                                    obj.data.data.Righthand.Quaternion[3],
+                                    obj.data.data.Righthand.Quaternion[0]
+                                ]);
+                            }
+        					break;
+                        case 'client':
+                            $.nymph.clientList.html('');
+                            for(var i = 0; i < obj.data.length; i++)
+                            {
+                                $.nymph.clientList.append('<div class="item"><p>[' + obj.data[i].type + '] <b>' + obj.data[i].address + '</b> : ' + obj.data[i].port + '</p></div>')
+                            }
+                            // console.log(obj.data);
+                            break;
+        				default:
+        					$.nymph.consolePrint('[' + obj.type + '] ' + JSON.stringify(obj.data));
+        					break;
+        			};
+                    $.nymph.packageCount++;
+                    $('.package-count').html($.nymph.packageCount);
+        		});
+        	},
+       //  	localEventHandler : function() {
+       //  		this.localSocket.on('disconnect', function() {
+       //  			$.nymph.consolePrint($.nymph.localAddress + " disconnect.");
+       //  			$.nymph.localConnected = false;
+       //  		});
+			    // this.localSocket.on('message', function(obj) {
+			    //     console.log(obj);
+			    // });
+			    // this.localSocket.emit(
+			    // 	'message',
+			    // 	{
+			    // 		type : "serverinfo",
+			    // 	}
+			    // );
+       //  	},
+
+        };
+
+	    $.nymph.consolePrint("loading...");
+
+	    // $.nymph.connectLocalServer();
+	    $.nymph.connectRemoteServer();
+
+        $('.console .header').click(function() {
+            $.nymph.consoleClear();
+        });
+
+        $.nymph.addDevices = function(data) {
+            console.log(data);
+            var k = 0;
+            for(var i = 0; i < $.nymph.device.length; i++)
+            {
+                if($.nymph.device[i] === data.DongleID)
+                {
+                    k = 1;
+                }
+            };
+            if(k == 0)
+            {
+                $.nymph.device.push(data.DongleID);
+                $.nymph.deviceList.html("");
+                for(var j = 0; j < $.nymph.device.length; j++)
+                {
+                    $.nymph.deviceList.append('<div class="item"><p>[Dongle] <b>' + $.nymph.device[i] + '</b> : ');
+                }
+            }
+
+        };
+
+        $.nymph.enableID = function(id) {
+            $.nymph.enableDevice = id;
+        }
+
+        $('#console-line').keypress(function(event){
+            if(event.keyCode == "13")    
+            {
+                t = $('#console-line').val()
+                $.nymph.consolePrint("[console] " + $('#console-line').val());
+                $('#console-line').val("");
+                eval(t);
+            }
+        });
+
+	   //  setInterval(
+	   //  	function() {
+				// $.nymph.remoteSocket.emit(
+				// 	'message',
+				// 	{
+				// 		type : 'data',
+				// 		data : 'test',
+				// 	}
+				// );
+	   //  	},
+	   //  	1000
+	   //  );
+
+    });
+
+    // var socket = io('localhost');
+    // socket.on('connect', function() {
+    //     consolePrint("localhost connected.");
+    // });
+    </script>
+
+    <script>
+
+        var scene, camera, renderer;
+        var cube, cube2, linex, liney, linez,
+            speed = 0.01,
+            width = window.innerWidth * 0.5,
+            height = window.innerHeight * 0.7,
+            container = document.getElementById('three3d');
+
+        init();
+        animate();
+
+        function initCamera() {
+            camera = new THREE.PerspectiveCamera(70, width / height, 1, 10);
+            camera.position.set(0, 3.5, 5);
+            camera.lookAt(scene.position);
+        }
+
+        function initRenderer() {
+            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+            renderer.setSize(width, height);
+        }
+
+        function initCube() {
+            var geometry = new THREE.BoxGeometry(2, 2, 2),
+                // material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: false } );
+                material = new THREE.MeshDepthMaterial({wireframe: false, transparent: true, opacity: 0.5});
+            var geometry = new THREE.OctahedronGeometry(1.5);
+            cube = new THREE.Mesh(geometry, material);
+            // cube.useQuaternion = true;
+            scene.add(cube);
+
+            material = new THREE.MeshDepthMaterial({wireframe: true});
+            cube2 = new THREE.Mesh(geometry, material);
+            scene.add(cube2);
+
+            material = new THREE.MeshDepthMaterial({wireframe: false, transparent: false});
+
+            var geometry = new THREE.Geometry();
+            geometry.vertices.push(
+                            new THREE.Vector3( -4, 0, 0 ),
+                            new THREE.Vector3( 4, 0, 0 )
+            );
+
+            linex = new THREE.Line( geometry, material );
+            scene.add(linex);
+
+            var geometry = new THREE.Geometry();
+            geometry.vertices.push(
+                new THREE.Vector3( 0, 0, -4 ),
+                new THREE.Vector3( 0, 0, 4 )
+            );
+
+            liney = new THREE.Line( geometry, material );
+            scene.add(liney);
+
+            var geometry = new THREE.Geometry();
+            geometry.vertices.push(
+                new THREE.Vector3( 0,-4, 0 ),
+                new THREE.Vector3( 0, 4, 0 )
+            );
+
+            linez = new THREE.Line( geometry, material );
+            scene.add(linez);
+        }
+
+        function init() {
+
+            scene = new THREE.Scene();
+
+            initCamera();
+            initRenderer();
+
+            initCube();
+
+            // camera = new THREE.PerspectiveCamera( 75, width / height, 1, 10000 );
+            // camera.position.z = 1000;
+
+            // geometry = new THREE.BoxGeometry( 200, 200, 200 );
+            // material = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true } );
+
+            // mesh = new THREE.Mesh( geometry, material );
+            // scene.add( mesh );
+
+            // renderer = new THREE.WebGLRenderer();
+            // renderer.setSize( width, height );
+
+            // console.log(document.getElementById('three3d'))
+
+            container.appendChild( renderer.domElement );
+
+        }
+
+        function rotateCube(quat) {
+
+    // targetLine.geometry.vertices[ 1 ].y = mouse2D.y * 750;
+    // targetLine.geometry.vertices[ 1 ].x = mouse2D.x * 1500; 
+    
+    // var step = .025;    
+    // var rotateQuaternion = new THREE.Quaternion();
+    // rotateQuaternion.setFromAxisAngle( vector, step );
+    // mesh.quaternion.multiplySelf( rotateQuaternion );
+    // mesh.quaternion.normalize();
+
+    // var v = new THREE.Euler( 2, 1, 1.57, 'XYZ' );
+    var q = new THREE.Quaternion().fromArray(quat).normalize();
+    // var newQuaternion = new THREE.Quaternion();
+    // THREE.Quaternion.slerp( cube2.quaternion, q, newQuaternion, 0.07 );
+    // cube2.quaternion = newQuaternion;
+    // // mesh.quaternion.multiplySelf( newQuaternion );
+    // cube2.quaternion.normalize();
+
+    cube.quaternion.slerp( q, 1 );
+    cube2.quaternion.slerp( q, 1 );
+    linex.quaternion.slerp( q, 1 );
+    liney.quaternion.slerp( q, 1 );
+    linez.quaternion.slerp( q, 1 );
+
+
+            // cube.rotation.x -= speed * 2;
+            // cube.rotation.y -= speed;
+            // cube2.rotation.y -= speed;
+            // linex.rotation.y -= speed;
+            // liney.rotation.y -= speed;
+
+            // cube.rotation.z -= speed * 3;
+        }
+
+
+        function animate() {
+
+            requestAnimationFrame( animate );
+
+            // rotateCube();
+
+            renderer.render( scene, camera );
+
+        }
+
+        rotateCube([0.7054703927161164, -0.33872418378976865, 0.6205246157381175, 0.05026582914849126]);
+
+    </script>
+
+    <script type="text/javascript">
+(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();stats.domElement.style.cssText='position:fixed;left:0;top:25px;z-index:10000';document.body.appendChild(stats.domElement);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js';document.head.appendChild(script);})()
+    </script>
+
+</body>
+<!-- <script>
+  var socket = io('http://localhost');
+  socket.on('connect', function(){});
+  socket.on('event', function(data){});
+  socket.on('disconnect', function(){});
+</script> -->

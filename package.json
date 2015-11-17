@@ -1,0 +1,45 @@
+{
+  "name": "nymph",
+  "version": "0.1.0",
+  "description": "Nymph provides a data transferring method between TCPSocket and WebSocket, which could connect your different devices like Arduino, cellphone or laptop.",
+  "main": "index.js",
+  "scripts": {
+    "test": "make test-all"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/rijn/Nymph.git"
+  },
+  "keywords": [
+    "nymph",
+    "websocket",
+    "tcpsocket"
+  ],
+  "dependencies": {
+    "express": "~4.12.2",
+    "socket.io": "~1.3.7",
+    "net": "~1.0.2"
+  },
+  "devDependencies": {
+    "supertest": "*",
+    "mocha": "*",
+    "should": "~3.0.0",
+    "expect.js": "*",
+    "connect": "2.5.*",
+    "travis-cov": "*",
+    "coveralls": "*",
+    "mocha-lcov-reporter": "*",
+    "muk": "*",
+    "rewire": "*",
+    "istanbul": "*"
+  },
+  "author": "Rijn",
+  "license": "MIT",
+  "directories": {
+    "test": "test"
+  },
+  "bugs": {
+    "url": "https://github.com/rijn/Nymph/issues"
+  },
+  "homepage": "https://github.com/rijn/Nymph"
+}
